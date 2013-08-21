@@ -50,6 +50,7 @@
 			ball.last.y += ball.velocity.y;
 			if( ball.last.y > ctx.canvas.height-ball.radius ){
 				ball.velocity.y*=-ball.bounce;
+				ball.velocity.x*=ball.bounce;
 				ball.last.y = ctx.canvas.height-ball.radius;
 			}else if(ball.last.y < ball.radius){
 				ball.velocity.y*=-ball.bounce;
