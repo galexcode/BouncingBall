@@ -31,6 +31,7 @@
 		y:0,
 		radius:40,
 		bounce:.8,
+		friction:.99,
 		velocity:{
 			x:0,
 			y:0
@@ -50,7 +51,7 @@
 			ball.last.y += ball.velocity.y;
 			if( ball.last.y > ctx.canvas.height-ball.radius ){
 				ball.velocity.y*=-ball.bounce;
-				ball.velocity.x*=ball.bounce;
+				ball.velocity.x*=ball.friction;
 				ball.last.y = ctx.canvas.height-ball.radius;
 			}else if(ball.last.y < ball.radius){
 				ball.velocity.y*=-ball.bounce;
