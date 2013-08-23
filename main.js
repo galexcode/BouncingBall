@@ -25,6 +25,7 @@
 	}
 
 	var ctx = document.getElementById("gc").getContext("2d");
+	
 	var lock = false;
 	var ball = {
 		x:0,
