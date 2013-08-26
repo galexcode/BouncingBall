@@ -27,75 +27,106 @@
 	var ctx = document.getElementById("gc").getContext("2d");
 	
 	var lock = false;
-	var ball = {
-		x:0,
-		y:0,
-		radius:40,
-		bounce:.8,
-		friction:.99,
-		velocity:{
-			x:0,
-			y:0
-		},
-		gravity:{
-			x:0,
-			y:0.2
-		},
-		last:{
-			x:0,
-			y:0
-		},
-		preUpdate:function(){
-			ball.velocity.x += ball.gravity.x;
-			ball.velocity.y += ball.gravity.y;
-			ball.last.x += ball.velocity.x;
-			ball.last.y += ball.velocity.y;
-			if( ball.last.y > ctx.canvas.height-ball.radius ){
-				ball.velocity.y*=-ball.bounce;
-				ball.velocity.x*=ball.friction;
-				ball.last.y = ctx.canvas.height-ball.radius;
-			}else if(ball.last.y < ball.radius){
-				ball.velocity.y*=-ball.bounce;
-				ball.last.y = ball.radius;
-			}
-			
-			if( ball.last.x > ctx.canvas.width-ball.radius ){
-				ball.velocity.x*=-ball.bounce;
-				ball.last.x = ctx.canvas.width-ball.radius;
-			}else if(ball.last.x < ball.radius){
-				ball.velocity.x*=-ball.bounce;
-				ball.last.x = ball.radius;
-			}
-		},
-		update:function(){
-			ball.x = ball.last.x;
-			ball.y = ball.last.y;
-		},
-		render:function(){
-			ctx.fillStyle = "#5a5a5a";
-			ctx.strokeStyle="#fff";
-			ctx.beginPath();
-			ctx.arc(ball.x,ball.y,ball.radius,0,2*Math.PI);
-			ctx.fill();
-			ctx.stroke();
-			ctx.closePath();
-		},
-		pointOver:function(x,y){
-			return ((x-ball.x)*(x-ball.x)+(y-ball.y)*(y-this.y)) <= (ball.radius)*(ball.radius);
-		},
-		distanceToPoint:function(x,y){
-			return Math.sqrt((x-ball.x)*(x-ball.x)+(y-ball.y)*(y-ball.y));
-		},
-		angleTo:function(x,y){
-			return Math.atan2(x-ball.x,y-ball.y)+(90*Math.PI/180)
+
+	function Ball(x,y){
+		this.last = { x: x || 0, y: y || 0 };
+		this.radius = 40;
+		this.bounce = .8;
+		this.friction = .99;
+		this.velocity = { x:0, y:0 };
+		this.gravity = { x:0, y:0.2 };
+		this.x = this.last.x;
+		this.y = this.last.y;
+		this.active = true;
+	}
+
+	Ball.prototype.preUpdate = function(){
+		if(!this.active) return;
+		this.velocity.x += this.gravity.x;
+		this.velocity.y += this.gravity.y;
+		this.last.x += this.velocity.x;
+		this.last.y += this.velocity.y;
+
+		if( this.last.y > ctx.canvas.height-this.radius ){
+			this.velocity.y*=-this.bounce;
+			this.velocity.x*=this.friction;
+			this.last.y = ctx.canvas.height-this.radius;
+		}else if(this.last.y < this.radius){
+			this.velocity.y*=-this.bounce;
+			this.last.y = this.radius;
+		}
+		
+		if( this.last.x > ctx.canvas.width-this.radius ){
+			this.velocity.x*=-this.bounce;
+			this.last.x = ctx.canvas.width-this.radius;
+		}else if(this.last.x < this.radius){
+			this.velocity.x*=-this.bounce;
+			this.last.x = this.radius;
 		}
 	};
+
+	Ball.prototype.render = function(){
+		this.x = this.last.x;
+		this.y = this.last.y;
+		ctx.fillStyle = "#5a5a5a";
+		ctx.strokeStyle="#fff";
+		ctx.beginPath();
+		ctx.arc(this.x,this.y,this.radius,0,2*Math.PI);
+		ctx.fill();
+		ctx.stroke();
+		ctx.closePath();
+	};
+
+	Ball.prototype.pointOver = function(x,y){
+
+		return ((x-this.x)*(x-this.x)+(y-this.y)*(y-this.y)) <= (this.radius)*(this.radius);
+	};
+	Ball.prototype.distanceToPoint = function(x,y){
+		return Math.sqrt((x-this.x)*(x-this.x)+(y-this.y)*(y-this.y));
+	};
+
+	Ball.prototype.angleTo = function(x,y){
+		return Math.atan2(x-this.x,y-this.y)+(90*Math.PI/180);
+	};
+
+
 
 	var mouse = {
 		x:0,
 		y:0,
 		isDown:false
 	};
+
+	var balls = [];
+	var ball = null;
+	var making = false;
+
+	function updateBalls(){
+		for(var i=0;i<balls.length;i++){
+			var b = balls[i];
+
+			if(!making && b!=null && mouse.isDown && b.pointOver(mouse.x,mouse.y) && ball == null){
+				ball = b;
+				lock = true;
+				b.active = false;
+			}
+
+			b.preUpdate();
+		}
+	}
+
+	function renderBalls(){
+		for(var i=0;i<balls.length;i++){
+			var b = balls[i];
+			b.render();
+		}
+	}
+
+	function pointOverSomeBall(x,y){
+		for(var i=0;i<balls.length;i++){
+			return balls[i].pointOver(x,y);
+		}
+	}
 
 	function loop(){
 		updateScreen(loop);
@@ -104,25 +135,33 @@
 			window.scrollTo(0,1);
 		}
 
-		if(mouse.isDown && ball.pointOver(mouse.x,mouse.y)){
-			lock = true;
+		updateBalls();
 
-		}else if(!mouse.isDown && lock){
+		if(mouse.isDown && ball==null && !pointOverSomeBall(mouse.x,mouse.y) && !making ){
+
+			making = true;
+			balls[balls.length] = new Ball(mouse.x,mouse.y);
+			ball = balls[balls.length-1];
+			ball.active = false;
+			lock = true;
+		}
+		
+		
+		if(!mouse.isDown && lock && ball!=null ){
 			lock = false;
 			var angle = -ball.angleTo(mouse.x,mouse.y);
 			ball.velocity.x = Math.cos(angle)*((ball.distanceToPoint(mouse.x,mouse.y)*0.1));
 			ball.velocity.y = Math.sin(angle)*((ball.distanceToPoint(mouse.x,mouse.y)*0.1));
+			ball.active = true;
+			ball = null;
+			making = false;
 		}
 
 		cls();
 
-		if(!lock) ball.preUpdate();
+		renderBalls();
 
-		ball.update();
-
-		ball.render();
-
-		if(lock){
+		if(lock && ball != null){
 			var angle = -ball.angleTo(mouse.x,mouse.y);
 			var cx = ball.x+Math.cos(angle)*ball.distanceToPoint(mouse.x,mouse.y);
 			var cy = ball.y+Math.sin(angle)*ball.distanceToPoint(mouse.x,mouse.y);
@@ -158,8 +197,7 @@
 			ctx.canvas.height = window.innerHeight;
 		};
 
-		ball.last.x = ctx.canvas.width/2;
-		ball.last.y = ctx.canvas.height/2;
+		balls[balls.length] = new Ball(ctx.canvas.width/2,ctx.canvas.height/2);
 
 		if(!isTouch()){
 
@@ -193,6 +231,9 @@
 
 			ctx.canvas.addEventListener('touchstart', function(event) {
 				event.preventDefault();
+				var touch = event.targetTouches[0];
+				mouse.x = touch.pageX-ctx.canvas.offsetLeft;
+				mouse.y = touch.pageY-ctx.canvas.offsetTop;
 				mouse.isDown = true;
 			});
 		}
